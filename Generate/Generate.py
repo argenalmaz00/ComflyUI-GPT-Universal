@@ -3,9 +3,11 @@ import torch
 from typing import Any
 from tqdm import tqdm
 from comfy.utils import ProgressBar
+import execution
 import latent_preview
 from transformers import BatchEncoding, TextStreamer, PreTrainedTokenizerBase, ProcessorMixin,BatchFeature,GenerationMixin,PreTrainedModel,AutoImageProcessor
 from jinja2.exceptions import TemplateError
+
 
 
 class ProgressStreamer (TextStreamer):
@@ -13,18 +15,22 @@ class ProgressStreamer (TextStreamer):
         super().__init__(tokenizer)
         self.progressBar = ProgressBar(total=total_tokens)
         self.tokenizer = tokenizer
-        self.onStream = False
+        self.run = False
         
     def put(self, value):
         # Обновляем прогресс-бар
+        if not self.run:
+            print("==" *15)
+            self.run = True
         self.progressBar.update(1)
         typing = self.tokenizer.decode(value[0],skip_special_tokens=True)
         print(typing)
         print(value, end="", flush=True)
     
     def end(self):
-        pass
-
+        self.run = False
+        print("==" *15)
+        del self
 
 class GPTTextGenerator:
     def __init__(self) -> None:
@@ -152,11 +158,11 @@ class GPTTextGenerator:
                 # inputs.to(text_model.device)
                 if isinstance(text_model,GenerationMixin):           
                     inputs = inputs.to(text_model.device)
-                    print(inputs)
-                    print("==" * 10)
-                    print(f"is Tensor input_ids : {hasattr(inputs,"input_ids") } and Type (${type(inputs['input_ids'] if hasattr(inputs,"input_ids") else None)})")
-                    print(f"is Tensor attention_mask : {hasattr(inputs,"attention_mask") } and Type (${type(inputs['attention_mask'] if hasattr(inputs,"attention_mask") else None)})")
-                    print("==" * 10)
+                    # print(inputs)
+                    # print("==" * 10)
+                    # print(f"is Tensor input_ids : {hasattr(inputs,"input_ids") } and Type (${type(inputs['input_ids'] if hasattr(inputs,"input_ids") else None)})")
+                    # print(f"is Tensor attention_mask : {hasattr(inputs,"attention_mask") } and Type (${type(inputs['attention_mask'] if hasattr(inputs,"attention_mask") else None)})")
+                    # print("==" * 10)
                     
                     length = len(inputs["input_ids"][0]) + max_length
                     generated_ids = text_model.generate(
