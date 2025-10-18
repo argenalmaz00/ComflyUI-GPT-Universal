@@ -57,7 +57,7 @@ class LoadAutoModel:
     FUNCTION = "load_AutoModel"
     CATEGORY = "GPT/Loaders"
     
-    def load_AutoModel(self, model,type_class:Any,torch_dtype:str,device_map:str,load_in_8bit:bool,max_memory:str | None):
+    def load_AutoModel(self, model,type_class:Any,torch_dtype:str,device_map:str,load_in_8bit:bool,max_memory:str | None = None):
         model_path = os.path.join(folder_paths.models_dir, "LLM", model)
         if not os.path.exists(model_path):
             raise FileNotFoundError("Model path not found; ensure model files exist locally.")

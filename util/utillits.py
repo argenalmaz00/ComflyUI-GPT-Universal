@@ -19,7 +19,7 @@ class to:
     RETURN_TYPES = ("TEXT_MODEL",)
     RETURN_NAMES = ("text_model",)
     FUNCTION = "to"
-    CATEGORY = "util"
+    CATEGORY = "GPT/util"
     
     def to(
         self,
@@ -55,7 +55,7 @@ class toAndActivate:
     RETURN_TYPES = ("TEXT_MODEL",)
     RETURN_NAMES = ("text_model",)
     FUNCTION = "toAndActivate"
-    CATEGORY = "util"
+    CATEGORY = "GPT/util"
     
     def to(
         self,
@@ -97,7 +97,7 @@ class Config_MAX_MEMORY:
     RETURN_TYPES = ("MAX_MEMORY",)
     RETURN_NAMES = ("max_memory",)
     FUNCTION = "max_memory"
-    CATEGORY = "util"
+    CATEGORY = "GPT/util"
 
     def max_memory(
         self,
@@ -118,3 +118,10 @@ class Config_MAX_MEMORY:
                  print(f"Warning: gpu_select {gpu_select} is out of range (0 to {torch.cuda.device_count()-1}). Skipping GPU memory assignment.")
         # Если gpu_select или gpu_select_memory None, то GPU не добавляется
         return (max_memory,)
+    
+def filter_response(text):
+  start = "<|im_start|>assistant"
+  end = "<|im_end|>"
+  if start in text and end in text:
+    return text.split(start)[1].split(end)[0].strip()
+  return ""
