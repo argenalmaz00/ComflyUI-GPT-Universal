@@ -1,34 +1,18 @@
 from transformers import (
-    # Авто-классы
     AutoTokenizer,
     AutoProcessor,
-    AutoFeatureExtractor,
     AutoImageProcessor,
-
-    # Специализированные токенайзеры
-    GPT2Tokenizer, GPT2TokenizerFast,
-
-    # Мультимодальные и специальные
-    CLIPTokenizer, CLIPTokenizerFast,
     PreTrainedTokenizerBase,
     ProcessorMixin,
     VisionTextDualEncoderProcessor,
 )
-
 import os
 import folder_paths
-from typing import Any
-
 
 tokenizer_classes_dict = [
     {"AutoTokenizer": AutoTokenizer},
     {"AutoProcessor": AutoProcessor},
-    {"AutoFeatureExtractor": AutoFeatureExtractor},
     {"AutoImageProcessor": AutoImageProcessor},
-    {"GPT2Tokenizer": GPT2Tokenizer},
-    {"GPT2TokenizerFast": GPT2TokenizerFast},
-    {"CLIPTokenizer": CLIPTokenizer},
-    {"CLIPTokenizerFast": CLIPTokenizerFast},
     {"VisionTextDualEncoderProcessor": VisionTextDualEncoderProcessor}
 ]
 
@@ -65,7 +49,7 @@ class LoadAutoTokenizer:
     FUNCTION = "load_AutoTokeinzer"
     CATEGORY = "GPT/Loaders"
     
-    def load_AutoTokeinzer(self,tokenizer_model,type_class:Any):
+    def load_AutoTokeinzer(self,tokenizer_model,type_class):
         model_path = os.path.join(folder_paths.models_dir, "LLM", tokenizer_model)
         if not os.path.exists(model_path) :
             raise FileNotFoundError("If the path is not provided or the model is not found.")

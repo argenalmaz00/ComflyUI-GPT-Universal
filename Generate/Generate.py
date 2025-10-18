@@ -51,7 +51,6 @@ class GPTTextGenerator:
                 "user_role": ("STRING", {"multiline": True, "default": "Hello, how are you?"}),
                 "text_model": ("TEXT_MODEL",),
                 "tokenizer": ("TOKENIZER",),
-                "type_message": (["raw_text","apply_chat_template"], {"default": "apply_chat_template"}),
                 "temperature": ("FLOAT", {"default": 0.9, "min": 0.1, "max": 2.0, "step": 0.1}),
                 "top_k": ("INT", {"default": 50, "min": 1, "max": 100}),
                 "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.05}),
