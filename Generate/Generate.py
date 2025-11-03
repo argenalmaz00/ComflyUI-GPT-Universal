@@ -105,7 +105,7 @@ class GPTTextGenerator:
                         for i,m in enumerate (message):
                             if m["role"] == "system":
                                 message.remove(m)
-                                print(f"Remove system prompt: {m["content"]}")
+                                # print(f"Remove system prompt: {m["content"]}")
                                 
                         text = tokenizer.apply_chat_template(message,tokenize=False,add_generation_prompt=True)
                         inputs = tokenizer(text=text,return_tensors="pt")
@@ -158,3 +158,116 @@ class GPTTextGenerator:
 
         print("=" * 30 + "\n" + response.strip() + "\n" + "=" * 30)
         return (response.strip(),)
+
+class GPTMulityGenerate:
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        inputs_types = {
+            "required": {
+                "system_role": ("STRING", {"multiline": True, "default": "You are a helpful assistant."}),
+                "user_role": ("STRING", {"multiline": True, "default": "Hello, how are you?"}),
+                "text_model": ("TEXT_MODEL",),
+                "tokenizer": ("TOKENIZER",),
+                "temperature": ("FLOAT", {"default": 0.9, "min": 0.1, "max": 2.0, "step": 0.1}),
+                "top_k": ("INT", {"default": 50, "min": 1, "max": 100}),    
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.05}),
+                "max_new_tokens":("INT",{"default": 256, "min": 10, "max": 1024}),
+                "num_generated_sentences": ("INT", {"default": 2}),
+                "seed":("INT",{"default": 42, "min": 0, "max": torch.iinfo(torch.int32).max,"tooltip":"not working",},)
+            },
+            "optional":{
+                "image": ("IMAGE",)
+            }
+        }
+        
+        return inputs_types
+
+    OUTPUT_NODE = True
+    RETURN_TYPES = ("LIST",)
+    RETURN_NAMES = ("string_list",)
+    FUNCTION = "mulity_generate"
+    CATEGORY = "GPT"
+    
+    def mulity_generate(
+        self,
+        system_role: str,
+        user_role: str,
+        text_model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizerBase | ProcessorMixin,
+        temperature:float,
+        top_k:int,
+        top_p:int,
+        max_new_tokens:int,
+        num_generated_sentences:int,
+        seed:int,
+        image=None
+        )-> tuple[list[str]]:
+        
+        message = [
+            {"role": "system", "content":system_role},
+            {"role": "user", "content":user_role}
+        ]
+        if isinstance(tokenizer,PreTrainedTokenizerBase):
+            if image:
+                print("Tokenizer Image dose not support")
+            if hasattr(tokenizer,"apply_chat_template") and hasattr(tokenizer,"chat_template"):
+                try :
+                    text = tokenizer.apply_chat_template(message,add_generation_prompt=True,tokenize=False)
+                    inputs = tokenizer(text=text,return_tensors="pt")
+                except TemplateError as e:
+                    if e.message == "Conversation roles must alternate user/assistant/user/assistant/...":
+                        for i,m in enumerate (message):
+                            if m["role"] == "system":
+                                message.remove(m)
+                                # print(f"Remove system prompt: {m['content']}")
+                                print(f"Remove system prompt: ")
+                                
+                        text = tokenizer.apply_chat_template(message,tokenize=False,add_generation_prompt=True)
+                        inputs = tokenizer(text=text,return_tensors="pt")
+                    else :
+                        raise e
+            else :
+                inputs = tokenizer(user_role,return_tensors="pt")
+                
+        elif isinstance(tokenizer,ProcessorMixin) or isinstance(tokenizer,AutoImageProcessor):
+            text = tokenizer.apply_chat_template(message,tokenize=False,add_generation_prompt=True) # type: ignore
+            if image is not None:
+                inputs = tokenizer(images=image,text=text,return_tensors="pt") # type: ignore
+            else:
+                inputs = tokenizer(text=text,return_tensors="pt") # type: ignore
+        else :
+            raise Exception(f"Calss Not code: ${type(tokenizer)}")
+            
+        if inputs is None:
+            print(inputs)
+            raise Exception("Error inputs_ids Empty")
+        response:list[str] = []
+        
+        with torch.no_grad():
+            if isinstance(text_model,GenerationMixin):
+                inputs = inputs.to(text_model.device)
+                user_token_len = len(inputs["input_ids"][0])
+                tokenLengthStoppingCriteria = TokenLengthStoppingCriteria(user_token_len,max_new_tokens=max_new_tokens)
+                generated_ids = text_model.generate(
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs["attention_mask"],
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    top_k=top_k,
+                    do_sample=True,
+                    repetition_penalty=1.1,
+                    pad_token_id=(tokenizer.eos_token_id if hasattr(tokenizer,"eos_token_id") else None ), # type: ignore
+                    eos_token_id=(tokenizer.eos_token_id if hasattr(tokenizer,"eos_token_id") else None ), # type: ignore
+                    stopping_criteria=StoppingCriteriaList([tokenLengthStoppingCriteria]),
+                    num_return_sequences=num_generated_sentences
+                )
+                for i in generated_ids:
+                    text = tokenizer.decode(i, skip_special_tokens=False)
+                    response.append(filter_response(text))
+            else :
+                raise Exception(f"Error not Class GenerateionMixin (${isinstance(text_model,GenerationMixin)}) : ${type(text_model)}")
+        return (response,)

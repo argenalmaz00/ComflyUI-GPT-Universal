@@ -1,5 +1,8 @@
 from transformers import PreTrainedTokenizerBase
+from peft import PeftModel
 import torch
+import os
+import folder_paths
 
 class to:
     def __init__(self):
@@ -125,3 +128,54 @@ def filter_response(text):
   if start in text and end in text:
     return text.split(start)[1].split(end)[0].strip()
   return ""
+
+class Load_lora_model_peftModel:
+    def __init__(self) -> None:
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        list_paths = folder_paths.get_folder_paths("LLM_lora")
+        lora_names = [] # Изменено для хранения только имен
+        for i in list_paths:
+            if os.path.isdir(i): # Убедимся, что 'i' является директорией
+                for f in os.listdir(i):
+                    # Добавляем только имя файла/папки, а не полный путь
+                    lora_names.append(f)
+        
+        # Удаляем дубликаты и сортируем для лучшего отображения в UI
+        lora_names = sorted(list(set(lora_names)))
+                
+        inputs_types = {
+            "required": {
+                "lora": (lora_names,{"default":lora_names[0] if lora_names else "",}), # Используем lora_names и исправляем опечатку "loar"
+            }
+        }
+
+        return inputs_types
+
+    RETURN_TYPES = ("TEXT_MODEL",)
+    RETURN_NAMES = ("text_model",)
+    FUNCTION = "load_lora"
+    CATEGORY = "GPT/util"
+    
+    def load_lora(self,model:PreTrainedTokenizerBase,lora:str):
+        found_lora_path = None
+        # Получаем все настроенные базовые пути для LLM_lora
+        for base_path in folder_paths.get_folder_paths("LLM_lora"):
+            # Формируем потенциальный полный путь, объединяя базовый путь и имя Lora
+            potential_lora_path = os.path.join(base_path, lora)
+            
+            # Проверяем, существует ли этот путь и является ли он директорией
+            # PeftModel обычно ожидает директорию, содержащую adapter_config.json и adapter_model.bin
+            if os.path.isdir(potential_lora_path):
+                found_lora_path = potential_lora_path
+                break # Найдено, нет необходимости искать дальше
+        
+        if found_lora_path is None:
+            raise FileNotFoundError(f"Модель Lora '{lora}' не найдена ни в одном из настроенных путей 'LLM_lora'.")
+
+        if isinstance(model,torch.nn.Module):
+            return PeftModel.from_pretrained(model,found_lora_path)
+        raise TypeError("Модель должна быть экземпляром torch.nn.Module для загрузки PeftModel.")
+

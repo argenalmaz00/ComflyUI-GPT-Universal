@@ -23,7 +23,7 @@ class LoadAutoTokenizer:
         
     @classmethod
     def INPUT_TYPES(cls):
-        llm_path = os.path.join(folder_paths.models_dir, "LLM")
+        llm_path = folder_paths.get_folder_paths("LLM")[0]
        
         if not os.path.exists(llm_path):
             os.makedirs(llm_path)

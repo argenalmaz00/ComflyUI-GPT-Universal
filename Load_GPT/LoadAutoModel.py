@@ -24,7 +24,7 @@ class LoadAutoModel:
         
     @classmethod
     def INPUT_TYPES(cls):
-        llm_path = os.path.join(folder_paths.models_dir, "LLM")
+        llm_path = folder_paths.get_folder_paths("LLM")[0]
        
         if not os.path.exists(llm_path):
             os.makedirs(llm_path)
@@ -44,7 +44,8 @@ class LoadAutoModel:
                 "type_class": (key_auto_model_classes,{"default":"AutoModel"}),
                 "torch_dtype" : (["auto","float32","float16","bfloat16"],{"default":"auto"}),
                 "device_map" : (["auto","cpu","cuda"],{"default":"auto"}),
-                "load_in_8bit":("BOOLEAN",{"default":False})
+                "load_in_8bit":("BOOLEAN",{"default":False}),
+                "use_mamba_kernels":("BOOLEAN",{"default":False})
             },
             "optional":{
                 "max_memory": ("MAX_MEMORY",),
@@ -57,7 +58,17 @@ class LoadAutoModel:
     FUNCTION = "load_AutoModel"
     CATEGORY = "GPT/Loaders"
     
-    def load_AutoModel(self, model,type_class:Any,torch_dtype:str,device_map:str,load_in_8bit:bool,max_memory:str | None = None):
+    def load_AutoModel(
+        self,
+        model,
+        type_class:Any,
+        torch_dtype:str,
+        device_map:str,
+        load_in_8bit:bool,
+        use_mamba_kernels:bool,
+        max_memory:dict["str","str"] | None = None
+        ):
+        
         model_path = os.path.join(folder_paths.models_dir, "LLM", model)
         if not os.path.exists(model_path):
             raise FileNotFoundError("Model path not found; ensure model files exist locally.")
@@ -74,17 +85,28 @@ class LoadAutoModel:
         print(f"Model class: {model_class}  | Load model path: {model_path}")
         print(f"Attempting to load model from: {model_path} with class: {model_class.__name__}")
         try:
+            custom_kwars_args:dict["str","Any"] = {
+                "local_files_only":True,
+                "trust_remote_code":False,
+                "force_download":False,
+                "resume_download":False,
+            }
+            if use_mamba_kernels:
+                custom_kwars_args["use_mamba_kernels"] = True
+                
+            if max_memory:
+                custom_kwars_args["max_memory"] = max_memory
+                
+            if load_in_8bit:
+                custom_kwars_args["load_in_8bit"] = True
+            
+            
             # load using the found class; ensure local-only to avoid downloads
             self.text_model = model_class.from_pretrained(
                 model_path,
-                local_files_only=True,
-                trust_remote_code=False,
-                force_download=False,
-                resume_download=False,
                 torch_dtype=torch_dtype,
                 device_map=device_map,
-                load_in_8bit=load_in_8bit,
-                max_memory=max_memory
+                **custom_kwars_args
             )
             print(f"Successfully loaded model from: {model_path}")
         except Exception as e:
